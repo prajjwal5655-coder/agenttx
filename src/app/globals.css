@@ -1,3 +1,17 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer utilities {
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+    .print-page-break {
+      page-break-before: always;
+    }
+    .print-break-inside-avoid {
+      break-inside: avoid;
+    }
+  }
+}

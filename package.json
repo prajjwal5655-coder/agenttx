@@ -4,6 +4,15 @@
   "description": "AgentTTX - AI-agent incident tabletop exercises",
   "license": "MIT",
   "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "seed": "tsx prisma/seed.ts"
+  },
   "dependencies": {
     "@prisma/client": "5.18.0",
     "@radix-ui/react-slot": "1.0.2",
