@@ -19,7 +19,10 @@ export const Capability = z.enum([
   "browser_control",
 ]);
 
+export type Capability = z.infer<typeof Capability>;
+
 export const Sensitivity = z.enum(["public", "internal", "confidential", "regulated"]);
+export type Sensitivity = z.infer<typeof Sensitivity>;
 
 export const NormalizedToolSchema = z.object({
   name: z.string(),
@@ -60,16 +63,14 @@ export type BlastSummary = {
 
 export type CapabilityRule = {
   pattern: string;
-  capability: z.infer<typeof Capability>;
+  capability: Capability;
   confidence: "high" | "medium" | "low";
 };
 
 export type InferCapabilityResult = {
-  capability: z.infer<typeof Capability>;
+  capability: Capability;
   confidence: "high" | "medium" | "low";
   ruleIndex: number;
 };
-
-export let NODE_ENV: string;
 
 export type Channel = "email" | "slack" | "dashboard" | "phone" | "alert";
