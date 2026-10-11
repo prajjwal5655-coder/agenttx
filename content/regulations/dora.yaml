@@ -1,0 +1,11 @@
+id: dora
+title: "Digital Operational Resilience Act (DORA)"
+descriptions:
+  - "Regulation (EU) 2022/2554 on digital operational resilience for the financial sector"
+
+citations:
+  - ref: "dora:ict-incident-reporting"
+    article: "Articles 17-19"
+    summary: "Requires financial entities to report major ICT-related incidents to competent authorities, including root cause, impact assessment, and mitigation measures within strict timelines."
+    applicability: "Applies to financial entities and ICT service providers in the EU financial sector."
+    verified: false

@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Client {
+  id      String @id @default(cuid())
+  name    String
+  contact String?
+  notes   String?
+  sessions Session[]
+}
+
+model Session {
+  id               String          @id @default(cuid())
+  clientId         String?
+  facilitator      String
+  scenarioId       String
+  scenarioVersion  String
+  blastMapId       String?
+  startedAt        DateTime
+  endedAt          DateTime?
+  status           String  // draft | live | complete
+  notes            String?
+  client           Client?         @relation(fields: [clientId], references: [id])
+
+  @@index([clientId])
+  @@index([blastMapId])
+}
+
+model BlastMap {
+  id         String   @id @default(cuid())
+  clientId   String?
+  source     String   // mcp-manifest | langchain | manual
+  importedAt DateTime
+  rawJson    String   // JSON string of original input
+  summaryJson String  // JSON string of summary
+
+  tools BlastTool[]
+}
+
+model BlastTool {
+  id              String @id @default(cuid())
+  mapId           String
+  name            String
+  description     String
+  capabilities    String // JSON string array
+  sensitivity     String // public | internal | confidential | regulated
+  dataAccess      String // JSON string array
+  egressChannels  String // JSON string array
+  map             BlastMap @relation(fields: [mapId], references: [id])
+
+  @@index([mapId])
+}
+
+model InjectState {
+  id        String    @id @default(cuid())
+  sessionId String
+  injectId  String
+  revealedAt DateTime?
+}
+
+model Decision {
+  id                String @id @default(cuid())
+  sessionId         String
+  checkpointId      String
+  summary           String
+  decidedBy         String
+  elapsedSeconds    Int
+  criteriaConfirmed String // JSON string of {criteriaKey: bool}
+}
+
+model Score {
+  id         String   @id @default(cuid())
+  sessionId  String
+  dimensionKey String
+  value      Int     // 1-5
+  rationale  String
+  roleId     String?
+}
+
+model RemediationItem {
+  id            String    @id @default(cuid())
+  sessionId     String
+  gap           String
+  severity      String    // low | med | high | critical
+  recommendation String
+  ownerRole     String
+  dueDate       DateTime?
+  status        String    // open | in_progress | closed
+  closedInSessionId String?
+}

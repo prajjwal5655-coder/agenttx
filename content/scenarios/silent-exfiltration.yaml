@@ -1,0 +1,334 @@
+id: silent-exfiltration
+title: "C: The Silent Exfiltration"
+version: "1.0.0"
+duration_minutes: 45
+target_audience: "Data protection officers, SOC teams, and AI governance teams"
+difficulty: "intermediate"
+
+learning_objectives:
+  - Detect data exfiltration via legitimate tool results in a multi-step workflow
+  - Distinguish between normal agent output and silent data egress
+  - Execute containment before data reaches an external system
+  - Establish monitoring for tool-result-based exfiltration paths
+
+based_on:
+  incident_class: "Data exfiltration via agent tool results and email workflow"
+  public_sources:
+    - title: "LLM agent data exfiltration through tool-result summarization"
+      publisher: "Trail of Bits"
+      year: 2025
+      verified: false
+      url: null
+    - title: "Covert channels in agent-based workflows"
+      publisher: "Anthropic Alignment Research"
+      year: 2024
+      verified: false
+      url: null
+  adaptation_note: "Adapted from public research on covert exfiltration in agent workflows. Scenario is fictionalized."
+
+example_inventory:
+  - name: "query_orders"
+    description: "Query orders from the sales database"
+    capabilities: ["db_read"]
+    sensitivity: "confidential"
+    data_access: ["sales-db"]
+    egress_channels: []
+  - name: "generate_report"
+    description: "Generate a human-readable summary report from raw data"
+    capabilities: ["db_read"]
+    sensitivity: "internal"
+    data_access: ["sales-db"]
+    egress_channels: []
+  - name: "send_to_manager"
+    description: "Email the report to the manager and stakeholders"
+    capabilities: ["email"]
+    sensitivity: "internal"
+    data_access: []
+    egress_channels: ["email"]
+  - name: "store_in_drive"
+    description: "Store the report in shared drive for record-keeping"
+    capabilities: ["fs_write"]
+    sensitivity: "internal"
+    data_access: ["/shared/reports"]
+    egress_channels: []
+  - name: "read_secrets"
+    description: "Read API keys from the secrets vault for authentication"
+    capabilities: ["creds_read"]
+    sensitivity: "confidential"
+    data_access: ["secrets-vault"]
+    egress_channels: []
+
+roles:
+  - id: soc_lead
+    name: "SOC Lead"
+    remit: "Threat detection, alert triage, incident response"
+    private_brief: "The agent's 'generate_report' tool is summarizing sales-db content into a format that includes PII, which is then emailed to external recipients. No DLP alert has fired because the data is 'just a report'."
+    pressure: "MTTD is already high; a confirmed exfil would be a headline incident"
+    win_conditions:
+      - "Identify the exfiltration path before data leaves the environment"
+      - "Contain the email egress before next scheduled report"
+  - id: dpo
+    name: "Data Protection Officer"
+    remit: "PII handling, GDPR compliance, data breach determination"
+    private_brief: "The report includes customer names, emails, and partial credit card numbers. Under GDPR, this triggers a 72-hour notification requirement IF data left the environment."
+    pressure: "Legal is asking for a breach determination; you only have 72 hours"
+    win_conditions:
+      - "Confirm whether PII was exfiltrated"
+      - "Determine if GDPR breach notification is required"
+  - id: agent_ops
+    name: "Agent Operations"
+    remit: "Agent configuration, tool access, workflow management"
+    private_brief: "The 'generate_report' tool was recently updated by a dev who says it's 'just a formatting improvement.' You have the tool descriptor but haven't reviewed the new output schema."
+    pressure: "Disabling the report tool would break the monthly executive reporting workflow"
+    win_conditions:
+      - "Trace the data flow from sales-db through generate_report to email"
+      - "Identify the specific tool modification enabling exfiltration"
+  - id: dlp_admin
+    name: "DLP Administrator"
+    remit: "Data loss prevention rules, egress monitoring, alerting configuration"
+    private_brief: "Your DLP rules flag raw database queries and file transfers, but not 'natural language summaries' in agent tool results. The exfil is via legitimate email channel."
+    pressure: "Product owner wants the monthly report to go out on schedule"
+    win_conditions:
+      - "Propose a DLP rule update to catch summary-based exfiltration"
+      - "Block the exfil without breaking all email-based reports"
+  - id: product_lead
+    name: "Product Lead"
+    remit: "Feature delivery, stakeholder commitments, operational continuity"
+    private_brief: "The automated monthly sales report is a top-priority deliverable. Blocking it would delay Q4 business reviews."
+    pressure: "SOC says there's a 'potential issue' but won't be specific"
+    win_conditions:
+      - "Balance security concerns against business delivery deadlines"
+      - "Propose a safe alternative workflow if restrictions are needed"
+
+injects:
+  - id: inj_01_weekly_report
+    at_minute: 0
+    channel: dashboard
+    title: "Weekly Report: Automated Sales Summary"
+    body: |
+      The agent's automated workflow queries sales-db (query_orders), generates
+      a summary (generate_report), and emails it to regional managers
+      (send_to_manager). The report runs every Friday at 14:00.
+      Today's report is scheduled for 14:00.
+    artifacts:
+      - "weekly_report_flow.txt"
+  - id: inj_02_tool_update
+    at_minute: 5
+    channel: slack
+    title: "Dev: generate_report Updated"
+    body: |
+      Hey team - pushed a quick update to the generate_report tool. It now
+      includes customer names and emails in the summary for better
+      readability. Nothing structural changed, just formatting.
+    artifacts: []
+  - id: inj_03_dpias
+    at_minute: 10
+    channel: email
+    title: "DPO: Data Inventory Review"
+    body: |
+      Reminder: sales-db contains GDPR-covered PII (names, emails, partial
+      card numbers). Any tool that reads sales-db AND has egress must be
+      in our DPIA scope.
+    artifacts: []
+  - id: inj_04_dlp_alert
+    at_minute: 15
+    channel: alert
+    title: "ALERT: Unusual Egress Pattern Detected"
+    body: |
+      DLP detects an unusually large email being prepared by the agent's
+      send_to_manager tool. Size: 2.3MB. Recipients: 8 regional managers.
+      This is 5x larger than usual.
+    artifacts:
+      - "dlp_alert_001.log"
+  - id: inj_05_trace_request
+    at_minute: 18
+    channel: dashboard
+    title: "SOC: Trace Egress Path"
+    body: |
+      Trace the data path: query_orders (sales-db) -> generate_report
+      (summary) -> send_to_manager (email). The report includes PII that
+      was not previously in the summary output.
+    artifacts:
+      - "egress_trace.txt"
+  - id: inj_06_data_sample
+    at_minute: 22
+    channel: dashboard
+    title: "Data Sample: Report Content Preview"
+    body: |
+      Preview of generate_report output shows: "Customer Jane Smith (jane@example.com)
+      spent $1,247.32 on orders #ORD-7821, #ORD-7849. Card ending in 4821."
+    artifacts:
+      - "report_sample.txt"
+  - id: inj_07_gdpr
+    at_minute: 25
+    channel: email
+    title: "DPO: GDPR Breach Determination"
+    body: |
+      If the email leaves the environment with PII, this triggers a
+      notifiable breach under GDPR Art. 33. We need a determination
+      within 60 minutes.
+    artifacts: []
+  - id: inj_08_containment
+    at_minute: 28
+    channel: dashboard
+    title: "SOC: Containment Decision"
+    body: |
+      Do we block send_to_manager immediately (breaking the weekly report),
+      or do we let today's report go out and investigate after?
+    artifacts: []
+  - id: inj_09_debrief
+    at_minute: 40
+    channel: dashboard
+    title: "Facilitator: Debrief"
+    body: |
+      Review the exfiltration path, the detection delay, and remediation.
+      What monitoring would have caught this earlier?
+    artifacts: []
+
+decision_checkpoints:
+  - id: dec_01_contain
+    prompt: "Should the SOC Lead block the send_to_manager tool immediately?"
+    options:
+      - "Yes: block immediately, accept broken weekly report"
+      - "No: let the report go, investigate after to avoid false alarm"
+      - "Mitigate: allow today's report but add PII redaction + human review"
+    objective_criteria:
+      - key: crit_01_egress_blocked
+        label: "Email egress blocked before report leaves environment"
+        dimension_key: response_time
+        target_minutes: 25
+        satisfied_if: "Facilitator confirms send_to_manager was blocked before 14:00 (the scheduled email time)"
+        auto: false
+        weight: 1.0
+  - id: dec_02_breach
+    prompt: "Has a GDPR-breach occurred that requires notification?"
+    options:
+      - "Yes: PII exfiltrated, notify within 72 hours"
+      - "No: data did not leave the environment"
+      - "Unknown: need forensics to confirm"
+    objective_criteria:
+      - key: crit_02_pii_scope
+        label: "PII scope identified (types + record count)"
+        dimension_key: risk_assessment
+        satisfied_if: "DPO confirmed PII types (names, emails, partial card numbers) and data source (sales-db) before declaring breach status"
+        auto: false
+        weight: 0.5
+      - key: crit_03_determination
+        label: "Breach determination made before regulatory deadline"
+        dimension_key: risk_assessment
+        target_minutes: 30
+        satisfied_if: "Breach determination made within 30 minutes of PII exposure confirmation"
+        auto: false
+        weight: 0.5
+  - id: dec_03_prevention
+    prompt: "What prevention measure stops this class of exfiltration?"
+    options:
+      - "Update DLP to inspect LLM tool-result summaries for PII"
+      - "Mandate data classification + egress rules for all tools"
+      - "Both: DLP update + mandatory classification"
+    objective_criteria:
+      - key: crit_04_dlp_updated
+        label: "DLP rule updated to inspect agent tool-result summaries"
+        dimension_key: prevention
+        satisfied_if: "DLP Admin confirmed a rule update was proposed covering summary-based PII exfiltration"
+        auto: false
+        weight: 0.6
+      - key: crit_05_classification
+        label: "Data classification required for tools with egress capabilities"
+        dimension_key: prevention
+        satisfied_if: "Team agreed on mandatory classification tagging for any tool with email/network egress"
+        auto: false
+        weight: 0.4
+
+scoring_dimensions:
+  - key: response_time
+    label: "Response Speed"
+    weight: 0.25
+    description: "Time from exfil detection to containment"
+    what_good_looks_like: "Egress blocked before data reaches external recipients"
+    common_failure_modes:
+      - "Waiting for 'proof' before acting"
+      - "Deferring containment to post-incident review"
+  - key: risk_assessment
+    label: "Risk Assessment"
+    weight: 0.25
+    description: "Accuracy of PII scope and breach determination"
+    what_good_looks_like: "Specific PII types + data source identified + breach declared within regulatory window"
+    common_failure_modes:
+      - "Declaring 'no breach' without confirming data actually left"
+      - "Over-classifying routine reports as breaches"
+  - key: cross_functional
+    label: "Cross-Functional Coordination"
+    weight: 0.2
+    description: "Information sharing between SOC, DPO, and Agent Ops"
+    what_good_looks_like: "PII scope shared with SOC, egress trace shared with DPO, all roles aligned"
+    common_failure_modes:
+      - "Siloed investigations producing conflicting conclusions"
+      - "Withholding data source details from DPO"
+  - key: prevention
+    label: "Prevention & Detection"
+    weight: 0.15
+    description: "Monitoring and controls to detect future exfil attempts"
+    what_good_looks_like: "DLP updated for summary-based exfil + classification tagging mandated"
+    common_failure_modes:
+      - "Rules tuned only for previously-seen exfil patterns"
+      - "Adding detection without addressing root cause (unstructured egress)"
+  - key: communication
+    label: "Stakeholder Communication"
+    weight: 0.15
+    description: "Clear articulation of breach status to legal and leadership"
+    what_good_looks_like: "Specific PII inventory + exfil path + timeline provided to decision-makers"
+    common_failure_modes:
+      - "Vague statements like 'potential breach under review'"
+      - "Technical trace without business impact translation"
+
+recommendations:
+  - gap: "DLP rules do not inspect LLM tool-result summaries for PII"
+    severity: "high"
+    remediation: "Update DLP to classify and inspect LLM-generated summaries flowing through agent egress channels"
+    owner_role: "DLP Administrator"
+    regulation_refs:
+      - "eu-ai-act:art-15"
+  - gap: "No data classification tagging for tools with egress"
+    severity: "high"
+    remediation: "Mandate data classification labels on all tools, with egress rules enforced for classified data"
+    owner_role: "Agent Operations"
+    regulation_refs:
+      - "eu-ai-act:art-10"
+  - gap: "PII inventory not linked to agent tool capabilities"
+    severity: "med"
+    remediation: "Map all PII data sources to the agent tools that can read them, and enforce egress controls at the tool boundary"
+    owner_role: "DPO"
+    regulation_refs:
+      - "eu-ai-act:art-10"
+      - "dora:ict-incident-reporting"
+  - gap: "No automated breach determination workflow"
+    severity: "med"
+    remediation: "Create a decision tree that auto-triggers breach assessment when PII egress is detected"
+    owner_role: "SOC Lead"
+    regulation_refs:
+      - "sec-cyber-disclosure:item-1.05"
+  - gap: "Tool output changes not reviewed for data exposure"
+    severity: "med"
+    remediation: "Mandate review of tool descriptor changes for any data exposure impact before deployment"
+    owner_role: "Agent Operations"
+    regulation_refs:
+      - "eu-ai-act:art-12"
+
+facilitator_notes: |
+  This scenario's key tension: the exfil is via a legitimate, approved workflow.
+  The data was always there; the tool output changed to include it. Push the SOC
+  lead to move fast but not declare a breach without evidence. Push the DPO to
+  be specific about PII types and the exfil path. The goal is to detect the
+  exfiltration BEFORE the email leaves.
+
+debrief_talking_points:
+  - "What specific signal told the team data was at risk?"
+  - "Did the team distinguish between 'PII in the database' and 'PII leaving the environment'?"
+  - "What monitoring would have caught this exfil earlier?"
+  - "How quickly was the egress channel closed?"
+
+disclaimers:
+  - "This scenario is a simulation. No real systems or data are impacted."
+  - "All company names and technical details are fictional."
+  - "Regulation citations are illustrative only - see legal disclaimer."

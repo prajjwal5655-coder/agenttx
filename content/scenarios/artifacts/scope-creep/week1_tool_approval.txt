@@ -1,0 +1,6 @@
+Week 1 Tool Approval
+====================
+Date: 2025-06-02
+Approver: arch-user-01
+Tools added: read_docs, list_tickets, run_query
+Notes: All read-only. Minimal scope. Standard approval.

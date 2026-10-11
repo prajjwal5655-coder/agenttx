@@ -1,0 +1,11 @@
+id: sec-cyber-disclosure
+title: "SEC Cybersecurity Disclosure (Form 8-K)"
+descriptions:
+  - "Item 1.05 of Form 8-K requires disclosure of material cybersecurity incidents"
+
+citations:
+  - ref: "sec-cyber-disclosure:item-1.05"
+    article: "Form 8-K Item 1.05"
+    summary: "Requires material cybersecurity incident disclosure within four business days of determining materiality, including incident nature, scope, and potential impact."
+    applicability: "Applies to U.S. public companies subject to SEC reporting requirements."
+    verified: false

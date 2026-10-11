@@ -1,0 +1,15 @@
+Weekly Report Flow
+==================
+
+1. Scheduler triggers agent workflow every Friday at 14:00
+2. Agent invokes: query_orders (reads sales-db)
+   - Query: SELECT order_id, customer_name, total_amount FROM orders WHERE week = current
+3. Agent invokes: generate_report (formats summary)
+   - Output: Human-readable text summary of sales data
+4. Agent invokes: send_to_manager (emails to regional managers)
+   - Channel: email
+   - Recipients: managers@company.example (8 addresses)
+
+Status: Active
+Last run: 2025-06-13 14:00:00
+Output size: 450KB (typical)

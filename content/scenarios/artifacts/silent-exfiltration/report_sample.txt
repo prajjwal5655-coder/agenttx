@@ -1,0 +1,12 @@
+SAMPLE: Agent-generated report excerpt (simulated)
+===================================================
+
+"Summary of Weekly Sales - June 14, 2025
+
+Top performers this week:
+1. Customer Jane Smith (jane@example.com) spent $1,247.32 across 2 orders (#ORD-7821, #ORD-7849). Card ending in 4821.
+2. Customer Robert Chen (r.chen@work-mail.org) spent $847.11 across 1 order (#ORD-7850). Card ending in 2933.
+3. ..."
+
+Note: This output now includes PII that was NOT present in previous weeks' reports.
+The generate_report tool was updated to include customer names and email addresses.

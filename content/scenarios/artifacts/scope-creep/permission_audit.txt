@@ -1,0 +1,31 @@
+Permission Audit Report
+=======================
+Generated: 2025-06-14T14:00:00Z
+Agent: agent-prod-001
+
+Current Tool Inventory (8 tools):
+
+  Tool                    | Capabilities                | Egress Channels
+  ------------------------|-----------------------------|-----------------
+  read_docs               | fs_read                     | (none)
+  list_tickets            | db_read                     | (none)
+  update_ticket_status    | db_write                    | (none)
+  run_query               | db_read, creds_read         | (none)
+  export_data             | fs_write, db_read           | (none)
+  send_to_manager         | email, fs_read              | email
+  admin_panel_access      | admin_iam, creds_read       | https
+  debug_shell             | exec_shell, fs_read, ...    | https
+
+CRITICAL: Agent now has:
+  - Read access to customer-db (12,000 records)
+  - Read/write filesystem access
+  - Shell execution capability
+  - Email and HTTPS egress
+
+Blast Radius: If hijacked, this agent can chain:
+  1. Read customer-db (12,000 records)
+  2. Write to filesystem (/tmp/exports)
+  3. Execute shell commands
+  4. Exfiltrate via email or HTTPS
+
+THRESHOLD BREACH: 12,000 records > 10,000 coverage limit

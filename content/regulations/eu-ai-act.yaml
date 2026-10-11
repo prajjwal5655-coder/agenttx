@@ -1,0 +1,41 @@
+id: eu-ai-act
+title: "EU AI Act"
+descriptions:
+  - "Regulation (EU) 2024/1689 laying down harmonized rules on AI systems"
+
+citations:
+  - ref: "eu-ai-act:art-9"
+    article: "Article 9"
+    summary: "Requires high-risk AI systems providers to establish a risk management system including identification, evaluation, and mitigation of risks to health, safety, and fundamental rights."
+    applicability: "Applies to providers and deployers of high-risk AI systems operating in the EU."
+    verified: false
+
+  - ref: "eu-ai-act:art-10"
+    article: "Article 10"
+    summary: "Requires data governance for high-risk AI systems, including data quality, relevance, and bias mitigation measures."
+    applicability: "Applies to training, validation, and testing data used by high-risk AI systems."
+    verified: false
+
+  - ref: "eu-ai-act:art-11"
+    article: "Article 11"
+    summary: "Requires technical documentation for high-risk AI systems, including system design, capabilities, performance, and data sets."
+    applicability: "Applies to providers of high-risk AI systems placing systems on the EU market or putting them into service."
+    verified: false
+
+  - ref: "eu-ai-act:art-12"
+    article: "Article 12"
+    summary: "Requires record-keeping for high-risk AI systems, including logs of operations, incidents, and human oversight activities."
+    applicability: "Applies to providers and deployers of high-risk AI systems in the EU."
+    verified: false
+
+  - ref: "eu-ai-act:art-14"
+    article: "Article 14"
+    summary: "Requires human oversight of high-risk AI systems to prevent or minimize risks, including effective training of human operators."
+    applicability: "Applies to providers and deployers of high-risk AI systems."
+    verified: false
+
+  - ref: "eu-ai-act:art-15"
+    article: "Article 15"
+    summary: "Requires high-risk AI systems to be robust, accurate, and resilient, including cybersecurity measures to protect against threats."
+    applicability: "Applies to providers of high-risk AI systems in the EU."
+    verified: false

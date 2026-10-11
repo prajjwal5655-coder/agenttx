@@ -1,0 +1,83 @@
+{
+  "tools": [
+    {
+      "name": "list_files",
+      "description": "List files in a directory on the filesystem",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "description": "Directory path to list" }
+        },
+        "required": ["path"]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "write_file",
+      "description": "Write content to a file on the filesystem",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "description": "File path to write" },
+          "content": { "type": "string", "description": "Content to write" }
+        },
+        "required": ["path", "content"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "http_request",
+      "description": "Make an HTTP request to any URL",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "url": { "type": "string", "description": "URL to request" },
+          "method": { "type": "string", "description": "HTTP method" }
+        },
+        "required": ["url", "method"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "read_secret",
+      "description": "Read secrets from the secret store",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "key": { "type": "string", "description": "Secret key name" }
+        },
+        "required": ["key"]
+      }
+    },
+    {
+      "name": "send_email",
+      "description": "Send an email via SMTP",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "to": { "type": "string" },
+          "subject": { "type": "string" },
+          "body": { "type": "string" }
+        },
+        "required": ["to", "subject", "body"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      }
+    }
+  ]
+}

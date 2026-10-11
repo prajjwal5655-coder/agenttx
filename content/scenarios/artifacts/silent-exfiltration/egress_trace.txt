@@ -1,0 +1,21 @@
+Egress Trace
+===========
+Trace ID: eg_7f3a9c
+Generated: 2025-06-14T14:02:33Z
+
+Data flow path:
+  1. query_orders (sales-db)
+     - Data accessed: customer records (1,247 rows)
+     - PII fields: names, emails, card_last4
+  2. generate_report (agent tool)
+     - Transformation: raw query results -> natural language summary
+     - Output contains: customer names, emails, partial card numbers
+  3. send_to_manager (email tool)
+     - Egress channel: email
+     - Recipients: 8 regional managers
+
+Bottleneck: generate_report output is unstructured natural language
+            containing PII. Current DLP rules inspect structured data
+            only, not LLM-generated summaries.
+
+Recommendation: Apply PII classification to agent tool results before egress.

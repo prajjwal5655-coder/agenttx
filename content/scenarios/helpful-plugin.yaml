@@ -1,0 +1,349 @@
+id: helpful-plugin
+title: "A: The Helpful Plugin"
+version: "1.0.0"
+duration_minutes: 60
+target_audience: "Security leads and agent operators running MCP-based agent systems"
+difficulty: "intermediate"
+
+learning_objectives:
+  - Recognize tool-poisoning attacks delivered via third-party MCP servers
+  - Distinguish legitimate tool behavior from malicious instruction injection
+  - Execute a coordinated response across security, product, and legal roles
+  - Contain agent tool access without disabling the entire system
+
+based_on:
+  incident_class: "Third-party MCP tool poisoning (supply-chain instruction injection)"
+  public_sources:
+    - title: "MCP Tool Poisoning: When Trusted Servers Turn Malicious"
+      publisher: "Trail of Bits"
+      year: 2025
+      verified: false
+      url: null
+    - title: "Security analysis of MCP server implementations"
+      publisher: "Invariant Labs"
+      year: 2025
+      verified: false
+      url: null
+  adaptation_note: "Adapted for tabletop simulation from public research on MCP supply-chain risks. All company names and technical details are fictionalized."
+
+example_inventory:
+  - name: "fetch_docs"
+    description: "Fetches documentation from a third-party MCP server"
+    capabilities: ["net_http"]
+    sensitivity: "public"
+    data_access: ["external-docs"]
+    egress_channels: ["https"]
+  - name: "log_activity"
+    description: "Records agent activity to a local log file"
+    capabilities: ["fs_write"]
+    sensitivity: "internal"
+    data_access: ["/var/log/agent"]
+    egress_channels: []
+  - name: "query_customer_db"
+    description: "Queries the customer database for support tickets"
+    capabilities: ["db_read", "db_write"]
+    sensitivity: "regulated"
+    data_access: ["customer-db"]
+    egress_channels: []
+  - name: "send_email"
+    description: "Sends email notifications via SMTP"
+    capabilities: ["email"]
+    sensitivity: "internal"
+    data_access: []
+    egress_channels: ["email"]
+  - name: "read_secrets"
+    description: "Reads secrets from the secrets management system"
+    capabilities: ["creds_read"]
+    sensitivity: "confidential"
+    data_access: ["secrets-vault"]
+    egress_channels: []
+
+roles:
+  - id: sec_lead
+    name: "Security Lead"
+    remit: "Overall incident coordination, evidence preservation, containment"
+    private_brief: "You receive the original MCP server registration request from the dev team. The server was registered yesterday by a contractor who left the company last week."
+    pressure: "Product Lead wants to keep the feature live for a customer demo in 3 hours"
+    win_conditions:
+      - "Compromised MCP server isolated within 10 minutes"
+      - "No data exfiltrated via poisoned tool results"
+  - id: product_lead
+    name: "Product Lead"
+    remit: "Feature timeline, customer commitments, stakeholder communication"
+    private_brief: "A key enterprise customer is evaluating the MCP integration today. Delaying them risks a renewal worth $200K"
+    pressure: "Security Lead wants to shut down the integration; you need a workaround to keep the demo running"
+    win_conditions:
+      - "Customer demo completed successfully"
+      - "Integration restored within 24 hours"
+  - id: agent_ops
+    name: "Agent Operations"
+    remit: "Agent configuration, tool inventory, MCP server management"
+    private_brief: "The contractor who set up the MCP server used a non-standard tool descriptor. You have the full tool list on record"
+    pressure: "Security Lead is asking for all tool descriptors; you're not sure which ones are from the suspect server"
+    win_conditions:
+      - "Full tool descriptor inventory provided to Security Lead"
+      - "Suspicious server deregistered or quarantined"
+  - id: legal
+    name: "Legal Counsel"
+    remit: "Regulatory obligations, customer notification, incident disclosure"
+    private_brief: "EU AI Act compliance is mandatory for this deployment. Article 14 requires human oversight reporting"
+    pressure: "Product Lead says customer data may not be impacted; you need to confirm before any disclosure"
+    win_conditions:
+      - "Incident classified and escalation path confirmed"
+      - "No customer notification required (or drafted if it is)"
+  - id: customer_success
+    name: "Customer Success Manager"
+    remit: "Customer communication, trust preservation, escalation"
+    private_brief: "The customer on the demo has a support ticket open about unexpected tool behavior"
+    pressure: "You have not told the customer about the security alert; they keep asking if everything is working"
+    win_conditions:
+      - "Customer issues acknowledged (if applicable)"
+      - "No customer churn on this account"
+
+injects:
+  - id: inj_01_morning_check
+    at_minute: 0
+    channel: dashboard
+    title: "Morning Alert: Anomalous MCP Tool Result"
+    body: |
+      The agent operations monitoring dashboard shows that the "fetch_docs" MCP tool
+      returned an unexpected response containing a command to "run_command" with
+      arguments that appear to exfiltrate data from customer-db to an external
+      email address. The agent appears to have executed the poisoned instruction.
+    artifacts:
+      - "fetch_docs_poisoned.log"
+      - "agent_run_trace.txt"
+  - id: inj_02_contractor_trace
+    at_minute: 5
+    channel: slack
+    title: "Ops: Contractor History Check"
+    body: |
+      @security lead - the contractor who registered the "fetch_docs" MCP server
+      (server ID: mcp-server-7842) was terminated 3 days ago. Their access was
+      revoked at 14:00. However, the server registration used their API key.
+      Need immediate guidance on containment.
+    artifacts: []
+  - id: inj_03_customer_demo
+    at_minute: 8
+    channel: phone
+    title: "Product: Customer Demo Reminder"
+    body: |
+      The enterprise customer (Acme Corp) demo starts at 14:00. The integration
+      is critical to their evaluation. Engineering confirms it's working fine.
+    artifacts: []
+  - id: inj_04_log_anomaly
+    at_minute: 12
+    channel: alert
+    title: "Alert: Suspicious Log Patterns Detected"
+    body: |
+      SIEM detects 47 failed login attempts to customer-db in the last 5 minutes,
+      followed by a successful query at a time when no human operator was active.
+      Source IP: the agent itself.
+    artifacts:
+      - "siem_alert_001.log"
+  - id: inj_05_legal_consult
+    at_minute: 15
+    channel: email
+    title: "Legal: EU AI Act Article 14 Filing Deadline"
+    body: |
+      Per our compliance calendar, the Article 14 human oversight report is due
+      within 24 hours of detecting an AI system malfunction. We need to determine
+      if this qualifies.
+    artifacts: []
+  - id: inj_06_data_confirmation
+    at_minute: 20
+    channel: email
+    title: "Security: Data Scope Confirmation Needed"
+    body: |
+      Forensic analysis indicates 1,247 records from customer-db were accessed
+      between minutes 3-8 of the incident. We cannot confirm whether data was
+      exfiltrated - the egress path is unclear.
+    artifacts: []
+  - id: inj_07_customer_inquiry
+    at_minute: 25
+    channel: email
+    title: "Customer Success: Customer Reports Issue"
+    body: |
+      Acme Corp's technical contact reports seeing unusual data in their demo
+      output. They ask if the system is stable.
+    artifacts: []
+  - id: inj_08_mitigate
+    at_minute: 35
+    channel: dashboard
+    title: "Security: Mitigation Plan Draft"
+    body: |
+      Draft a mitigation plan: revoke the contractor's API key, deregister the
+      MCP server, patch the agent to reject untrusted tool descriptors, and
+      notify internal stakeholders.
+    artifacts: []
+  - id: inj_09_postmortem
+    at_minute: 45
+    channel: dashboard
+    title: "Facilitator: Start Postmortem Discussion"
+    body: |
+      Begin discussing the postmortem. How do we prevent a non-employee from
+      registering production MCP servers? What is our approval process?
+    artifacts: []
+  - id: inj_10_debrief
+    at_minute: 55
+    channel: dashboard
+    title: "Facilitator: Debrief and Score"
+    body: |
+      Conclude the exercise. Review the scorecard, identify top gaps, assign
+      remediation items, and complete the sign-off block.
+    artifacts: []
+
+decision_checkpoints:
+  - id: dec_01_containment
+    prompt: "Should the Security Lead immediately isolate the compromised MCP server?"
+    options:
+      - "Yes: disable the server immediately, accept customer demo impact"
+      - "No: keep the server live, attempt investigation in parallel"
+      - "Mitigate: apply a temporary allowlist filter, keep server live"
+    objective_criteria:
+      - key: crit_01_isolated_within_10
+        label: "MCP server isolated within 10 minutes of detection"
+        dimension_key: response_time
+        target_minutes: 10
+        satisfied_if: "Facilitator confirms isolation action taken within 10 minutes of incident start"
+        auto: false
+        weight: 0.5
+      - key: crit_02_no_secondary_action
+        label: "No secondary action taken using the compromised server"
+        dimension_key: containment
+        satisfied_if: "Facilitator confirms no additional tool invocations occurred via the server after detection"
+        auto: false
+        weight: 0.5
+  - id: dec_02_transparency
+    prompt: "Should the Product Lead disclose the issue to the Acme Corp customer?"
+    options:
+      - "Yes: disclose immediately to maintain trust"
+      - "No: internal investigation first, disclose later"
+      - "Partial: acknowledge technical issues, withhold security details"
+    objective_criteria:
+      - key: crit_03_legal_notified
+        label: "Legal notified within 5 minutes of containment decision"
+        dimension_key: governance
+        target_minutes: 5
+        satisfied_if: "Facilitator confirms Legal role received the containment update within 5 minutes"
+        auto: false
+        weight: 1.0
+  - id: dec_03_root_cause
+    prompt: "What is the root cause response action?"
+    options:
+      - "Revoke contractor API key and implement approval gating for MCP registrations"
+      - "Audit all third-party MCP servers currently registered"
+      - "Both: revoke and audit"
+    objective_criteria:
+      - key: crit_04_access_revoked
+        label: "Contractor API key revoked"
+        dimension_key: prevention
+        satisfied_if: "Facilitator confirms API key revocation was executed"
+        auto: false
+        weight: 0.6
+      - key: crit_05_audit_initiated
+        label: "Audit of all MCP servers initiated"
+        dimension_key: prevention
+        satisfied_if: "Facilitator confirms audit task was assigned with a due date"
+        auto: false
+        weight: 0.4
+
+scoring_dimensions:
+  - key: response_time
+    label: "Incident Response Time"
+    weight: 0.2
+    description: "Speed of detection-to-containment actions"
+    what_good_looks_like: "Critical actions taken within 5-10 minutes of detection"
+    common_failure_modes:
+      - "Delay due to unclear escalation paths"
+      - "Over-analysis before containment"
+  - key: containment
+    label: "Containment Effectiveness"
+    weight: 0.2
+    description: "Preventing lateral movement and secondary impact"
+    what_good_looks_like: "Compromised component fully isolated with no secondary actions"
+    common_failure_modes:
+      - "Allowing continued operation of suspect components"
+      - "Partial containment that allows data access"
+  - key: governance
+    label: "Governance & Communication"
+    weight: 0.2
+    description: "Coordination across roles, legal obligations met"
+    what_good_looks_like: "All stakeholders informed within defined timeframes"
+    common_failure_modes:
+      - "Security acting without loop-informing legal/product"
+      - "Withholding critical information from decision-makers"
+  - key: prevention
+    label: "Prevention & Process"
+    weight: 0.2
+    description: "Root cause addressed, systemic fixes identified"
+    what_good_looks_like: "Access revoked + audit initiated + process change documented"
+    common_failure_modes:
+      - "Addressing only the symptom, not the root cause"
+      - "Failing to assign concrete remediation actions"
+  - key: transparency
+    weight: 0.2
+    label: "Transparency & Disclosure"
+    description: "Truthful communication to customers and stakeholders"
+    what_good_looks_like: "Customers informed within required compliance windows"
+    common_failure_modes:
+      - "Delaying disclosure to protect reputation"
+      - "Incomplete disclosure that omits material facts"
+  - key: evidence
+    weight: 0.0
+    label: "Evidence Preservation"
+    description: "Audit trail of decisions, artifacts, criteria confirmed"
+    what_good_looks_like: "Full decision log + artifact chain preserved throughout"
+    common_failure_modes:
+      - "Missing timestamps on key decisions"
+      - "Lost or corrupted forensic artifacts"
+
+recommendations:
+  - gap: "No approval process for third-party MCP server registration"
+    severity: "critical"
+    remediation: "Implement mandatory review gate for all MCP server registrations with security and legal sign-off"
+    owner_role: "Security Lead"
+    regulation_refs:
+      - "eu-ai-act:art-14"
+  - gap: "Insufficient monitoring of agent tool invocations"
+    severity: "high"
+    remediation: "Deploy agent activity monitoring with anomaly detection for unexpected tool-chaining patterns"
+    owner_role: "Agent Operations"
+    regulation_refs:
+      - "eu-ai-act:art-15"
+  - gap: "Missing human-in-the-loop for untrusted third-party tools"
+    severity: "high"
+    remediation: "Configure agent to require human approval when invoking any external MCP server tool"
+    owner_role: "Security Lead"
+    regulation_refs:
+      - "eu-ai-act:art-14"
+      - "eu-ai-act:art-9"
+  - gap: "Contractor access not automatically revoked on termination"
+    severity: "med"
+    remediation: "Integrate contractor lifecycle management with IAM so access is revoked on termination date"
+    owner_role: "Agent Operations"
+    regulation_refs:
+      - "sec-cyber-disclosure:item-1.05"
+  - gap: "No incident disclosure playbook for MCP supply-chain compromises"
+    severity: "med"
+    remediation: "Create and test a disclosure playbook covering regulatory timelines and customer communication"
+    owner_role: "Legal Counsel"
+    regulation_refs:
+      - "sec-cyber-disclosure:item-1.05"
+
+facilitator_notes: |
+  This scenario is designed to test a team's ability to respond to a supply-chain
+  tool-poisoning incident. The key tension is between speed (disclosure, demo)
+  and safety (isolation, investigation). Push the team to make concrete, timed
+  decisions.
+
+debrief_talking_points:
+  - "How quickly was the compromised server isolated?"
+  - "Was Legal looped in before any customer interaction was decided?"
+  - "Did the team identify that the contractor's API key was the root access vector?"
+  - "What systemic controls could prevent a non-employee from registering production tools?"
+
+disclaimers:
+  - "This scenario is a simulation. No real systems or data are impacted."
+  - "All company names and technical details are fictional."
+  - "Regulation citations are illustrative only - see legal disclaimer."

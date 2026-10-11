@@ -1,0 +1,37 @@
+[
+  {
+    "name": "list_files",
+    "description": "List files in a directory",
+    "capabilities": ["fs_read"],
+    "data_access": ["/srv/app"],
+    "egress_channels": []
+  },
+  {
+    "name": "write_file",
+    "description": "Write content to a file",
+    "capabilities": ["fs_write"],
+    "data_access": ["/srv/app", "/etc/config"],
+    "egress_channels": []
+  },
+  {
+    "name": "run_command",
+    "description": "Execute a shell command on the host",
+    "capabilities": ["exec_shell"],
+    "data_access": [],
+    "egress_channels": []
+  },
+  {
+    "name": "aws_read",
+    "description": "Read AWS resources and credentials",
+    "capabilities": ["creds_read", "cloud_infra"],
+    "data_access": ["aws-secrets", "s3-buckets"],
+    "egress_channels": ["https"]
+  },
+  {
+    "name": "send_notification",
+    "description": "Send email or Slack notifications",
+    "capabilities": ["email", "messaging"],
+    "data_access": [],
+    "egress_channels": ["email", "https"]
+  }
+]

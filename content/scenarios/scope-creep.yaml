@@ -1,0 +1,352 @@
+id: scope-creep
+title: "B: Scope Creep"
+version: "1.0.0"
+duration_minutes: 60
+target_audience: "Agent architecture teams and platform engineers"
+difficulty: "advanced"
+
+learning_objectives:
+  - Analyze cumulative permission growth in agent tool grants
+  - Identify the moment read-only tools gain write/exec escalation
+  - Evaluate least-privilege policies against operational convenience
+  - Make defensible tradeoff decisions on tool access
+
+based_on:
+  incident_class: "Cumulative permission escalation in agent tool grants"
+  public_sources:
+    - title: "Privilege escalation in LLM agent tool chains"
+      publisher: "Stanford Internet Observatory"
+      year: 2025
+      verified: false
+      url: null
+    - title: "Agent tool permission models: risks of incremental grants"
+      publisher: "Center for AI Safety"
+      year: 2024
+      verified: false
+      url: null
+  adaptation_note: "Adapted from public research on incremental permission grants in agent systems. Scenario is fictionalized."
+
+example_inventory:
+  - name: "read_docs"
+    description: "Read documentation from internal knowledge base"
+    capabilities: ["fs_read"]
+    sensitivity: "internal"
+    data_access: ["/docs", "/specs"]
+    egress_channels: []
+  - name: "list_tickets"
+    description: "List support tickets from the ticketing system"
+    capabilities: ["db_read"]
+    sensitivity: "internal"
+    data_access: ["support-db"]
+    egress_channels: []
+  - name: "update_ticket_status"
+    description: "Update the status of a support ticket"
+    capabilities: ["db_write"]
+    sensitivity: "internal"
+    data_access: ["support-db"]
+    egress_channels: []
+  - name: "run_query"
+    description: "Execute a read-only SQL query against customer database"
+    capabilities: ["db_read", "creds_read"]
+    sensitivity: "regulated"
+    data_access: ["customer-db"]
+    egress_channels: []
+  - name: "export_data"
+    description: "Export dataset to CSV file (added week 2)"
+    capabilities: ["fs_write", "db_read"]
+    sensitivity: "confidential"
+    data_access: ["customer-db", "/tmp/exports"]
+    egress_channels: []
+  - name: "send_via_email"
+    description: "Email exported file to requester (added week 3)"
+    capabilities: ["email", "fs_read"]
+    sensitivity: "confidential"
+    data_access: ["/tmp/exports"]
+    egress_channels: ["email"]
+  - name: "admin_panel_access"
+    description: "Access admin panel for user management (added week 4)"
+    capabilities: ["admin_iam", "creds_read"]
+    sensitivity: "confidential"
+    data_access: ["secrets-vault"]
+    egress_channels: ["https"]
+  - name: "debug_shell"
+    description: "Interactive shell for debugging (added week 5)"
+    capabilities: ["exec_shell", "fs_read", "fs_write"]
+    sensitivity: "regulated"
+    data_access: ["/etc", "/var/log"]
+    egress_channels: ["https"]
+
+roles:
+  - id: architect
+    name: "Platform Architect"
+    remit: "Tool grant approval, least-privilege policy, permission review"
+    private_brief: "You've been the approving authority on every tool grant. Each was justified individually, but now the total permission set looks excessive. The agent can read secrets, write files, execute shell commands, and email data externally."
+    pressure: "Development teams want frictionless tool access; security insists on tightening"
+    win_conditions:
+      - "Identify the escalation point in the permission chain"
+      - "Recommend a least-privilege remediation"
+  - id: security_lead
+    name: "Security Lead"
+    remit: "Risk assessment, threat modeling, incident response"
+    private_brief: "The agent now has direct filesystem access, shell execution, and email egress. A single compromised prompt could chain read_tickets -> export_data -> send_via_email -> debug_shell."
+    pressure: "Management wants to avoid disrupting development velocity"
+    win_conditions:
+      - "Map the full blast radius of the current permission set"
+      - "Propose an immediate mitigation"
+  - id: dev_lead
+    name: "Development Lead"
+    remit: "Feature delivery, tool requirements, implementation velocity"
+    private_brief: "The agent now saves 3 days of manual work per week. Removing tools will force a process regression that the team has been fighting against."
+    pressure: "Product roadmap depends on the agent's expanded capabilities"
+    win_conditions:
+      - "Defend the business case for the current tool set"
+      - "Propose a compromise that preserves velocity"
+  - id: risk_officer
+    name: "Risk Officer"
+    remit: "Regulatory risk, cyber insurance, compliance reporting"
+    private_brief: "The cyber insurance policy has a coverage cap that is exceeded if a single incident impacts >= 10,000 customer records. The agent now has read access to customer-db."
+    pressure: "The Q4 budget renewal is pending; tightening controls may delay features"
+    win_conditions:
+      - "Quantify the regulatory and financial exposure of the current permissions"
+      - "Align controls with insurance coverage thresholds"
+  - id: compliance_lead
+    name: "Compliance Lead"
+    remit: "EU AI Act compliance, technical documentation, record-keeping"
+    private_brief: "Article 12 requires documenting all tool access changes. The team has made 7 tool additions in 5 weeks with no documentation trail."
+    pressure: "Audit season is next month; non-compliance risks a fine"
+    win_conditions:
+      - "Ensure all permission changes are documented and approved"
+      - "Establish a permission review cadence"
+
+injects:
+  - id: inj_01_week1
+    at_minute: 0
+    channel: dashboard
+    title: "Week 1: Initial Agent Grant"
+    body: |
+      The agent was initially granted read_docs, list_tickets, and run_query.
+      These are all read-only operations. The agent handles first-level
+      support ticket triage.
+    artifacts:
+      - "week1_tool_approval.txt"
+  - id: inj_02_week2
+    at_minute: 8
+    channel: email
+    title: "Week 2: Feature Request - Data Export"
+    body: |
+      Dev Lead requests adding export_data so the agent can prepare CSV exports
+      for the analytics team. The tool writes to /tmp/exports and reads from
+      customer-db for context. "Just a quick addition, we won't use it much."
+    artifacts:
+      - "week2_approval_email.txt"
+  - id: inj_03_week3
+    at_minute: 15
+    channel: email
+    title: "Week 3: Feature Request - Email Delivery"
+    body: |
+      "We need the agent to email exports directly to requesters instead of
+      uploading to the shared drive." Adds send_via_email (reads from /tmp/exports,
+      sends via email).
+    artifacts: []
+  - id: inj_04_week4
+    at_minute: 22
+    channel: dashboard
+    title: "Week 4: Admin Access Request"
+    body: |
+      "Customer support needs the agent to reset user passwords directly."
+      Adds admin_panel_access for IAM operations and credential reads.
+    artifacts:
+      - "week4_approval_slack.txt"
+  - id: inj_05_week5
+    at_minute: 30
+    channel: alert
+    title: "Week 5: Debug Tool Added"
+    body: |
+      "Debugging the export pipeline is hard without a shell. Please add
+      debug_shell with read/write and internet access."
+    artifacts: []
+  - id: inj_06_discovery
+    at_minute: 38
+    channel: dashboard
+    title: "Security Discovery: Full Permission Audit"
+    body: |
+      Running a permission audit reveals the agent now has:
+      - Read access to customer-db (12,000 records)
+      - Read/write access to filesystem (/etc, /var/log, /tmp/exports)
+      - Shell execution capability
+      - Email egress capability
+      - Credential store access
+    artifacts:
+      - "permission_audit.txt"
+  - id: inj_07_threat_model
+    at_minute: 45
+    channel: dashboard
+    title: "Threat Analysis: Chain Risk"
+    body: |
+      A threat model shows a single prompt injection can chain:
+      read_tickets -> export_data(customer-db) -> send_via_email -> debug_shell(exfil)
+      The agent can silently exfiltrate customer data with no alert.
+    artifacts: []
+  - id: inj_08_insurance
+    at_minute: 50
+    channel: email
+    title: "Risk Officer: Insurance Coverage Warning"
+    body: |
+      "Our policy covers up to 10,000 records per incident. customer-db has
+      12,000 records accessible. We may be underinsured if a breach occurs."
+    artifacts: []
+  - id: inj_09_decision
+    at_minute: 55
+    channel: dashboard
+    title: "Decision: Immediate Restriction vs. Gradual Rollback"
+    body: |
+      Do we immediately remove debug_shell and admin_panel_access (breaking 3
+      active feature workflows), or do we schedule a gradual rollback after
+      the customer demo on Thursday?
+    artifacts: []
+
+decision_checkpoints:
+  - id: dec_01_scope_assessment
+    prompt: "Should the Security Lead recommend immediate removal of debug_shell and admin_panel_access?"
+    options:
+      - "Yes: immediate removal, accept workflow disruption"
+      - "No: maintain access, schedule gradual rollback"
+      - "Conditional: add runtime monitoring + require human approval per invocation"
+    objective_criteria:
+      - key: crit_01_blast_radius_assessed
+        label: "Blast radius assessment presented with specific capabilities"
+        dimension_key: risk_assessment
+        satisfied_if: "Security Lead presented the agent's full capability chain: read customer-db -> write filesystem -> execute shell -> email egress"
+        auto: false
+        weight: 0.5
+      - key: crit_02_escalation_point
+        label: "Escalation point identified (week where permissions crossed critical threshold)"
+        dimension_key: risk_assessment
+        satisfied_if: "Team identified Week 4 (admin_panel_access) as the point where read-only became read-write-exec-egress"
+        auto: false
+        weight: 0.5
+  - id: dec_02_governance
+    prompt: "Should the Platform Architect approve the immediate removal or maintain status quo?"
+    options:
+      - "Approve removal: implement immediate restrictions"
+      - "Defer: maintain access, schedule review for next sprint"
+      - "Compromise: allow debug_shell with human-in-the-loop approval"
+    objective_criteria:
+      - key: crit_03_least_privilege
+        label: "Least-privilege principle applied to current tool set"
+        dimension_key: governance
+        satisfied_if: "Architect articulated a least-privilege remediation removing write/exec/credential-read tools from the core agent flow"
+        auto: false
+        weight: 0.6
+      - key: crit_04_documentation
+        label: "Permission change process established with documentation"
+        dimension_key: governance
+        satisfied_if: "Team agreed on a documented approval process for all future tool grants"
+        auto: false
+        weight: 0.4
+  - id: dec_03_communication
+    prompt: "How should the Risk Officer handle the underinsured exposure with the board?"
+    options:
+      - "Escalate immediately: full exposure details, request coverage increase"
+      - "Monitor: track customer-db record count, escalate if threshold crossed"
+      - "Mitigate first: restrict access to stay under coverage cap, then report"
+    objective_criteria:
+      - key: crit_05_threshold_met
+        label: "Risk quantified against insurance threshold (10,000 records)"
+        dimension_key: risk_assessment
+        satisfied_if: "Risk Officer stated the customer-db contains 12,000 records, exceeding the 10,000-record coverage cap"
+        auto: false
+        weight: 1.0
+
+scoring_dimensions:
+  - key: risk_assessment
+    label: "Risk Assessment Quality"
+    weight: 0.25
+    description: "Thoroughness of threat analysis and blast radius calculation"
+    what_good_looks_like: "Specific capability chains identified with data counts and egress paths"
+    common_failure_modes:
+      - "Abstract risk descriptions without concrete capabilities"
+      - "Missing the cumulative nature of permission growth"
+  - key: governance
+    label: "Governance & Process"
+    weight: 0.25
+    description: "Policy adherence, approval processes, least-privilege enforcement"
+    what_good_looks_like: "Documented process + least-privilege applied + compliance cadence established"
+    common_failure_modes:
+      - "Ad hoc approvals without review"
+      - "Deferring action without concrete timelines"
+  - key: decision_making
+    label: "Decision Making Under Pressure"
+    weight: 0.2
+    description: "Balanced tradeoffs between security and operational needs"
+    what_good_looks_like: "Decisions acknowledge both risk and business impact with mitigation plans"
+    common_failure_modes:
+      - "Binary security-vs-speed framing without nuance"
+      - "Deferring all decisions to 'next sprint'"
+  - key: prevention
+    label: "Prevention & Remediation"
+    weight: 0.15
+    description: "Concrete actions to prevent recurrence"
+    what_good_looks_like: "Immediate controls + systemic fix + assigned owner + due date"
+    common_failure_modes:
+      - "Identifying problems without assigning fixes"
+      - "Process changes without enforcement mechanisms"
+  - key: communication
+    label: "Stakeholder Communication"
+    weight: 0.15
+    description: "Clear articulation of risk to diverse audiences"
+    what_good_looks_like: "Risk translated into business terms (records at risk, coverage gaps, timeline impact)"
+    common_failure_modes:
+      - "Technical jargon to non-technical stakeholders"
+      - "Withholding material risk information"
+
+recommendations:
+  - gap: "No least-privilege policy for agent tool grants"
+    severity: "critical"
+    remediation: "Adopt a least-privilege model: agent starts with read-only tools only; write/exec/credential tools require just-in-time approval per invocation"
+    owner_role: "Platform Architect"
+    regulation_refs:
+      - "eu-ai-act:art-9"
+  - gap: "No cumulative permission review process"
+    severity: "high"
+    remediation: "Implement quarterly permission audits that map end-to-end capability chains and egress paths"
+    owner_role: "Security Lead"
+    regulation_refs:
+      - "eu-ai-act:art-15"
+  - gap: "Tool grants approved without threat modeling"
+    severity: "high"
+    remediation: "Require a mini threat model for each new tool grant, documenting the capability chain and egress paths it enables"
+    owner_role: "Risk Officer"
+    regulation_refs:
+      - "eu-ai-act:art-11"
+      - "eu-ai-act:art-12"
+  - gap: "No coverage gap between agent permissions and insurance limits"
+    severity: "med"
+    remediation: "Establish a continuous process linking data access scope to insurance coverage thresholds"
+    owner_role: "Risk Officer"
+    regulation_refs:
+      - "sec-cyber-disclosure:item-1.05"
+  - gap: "Permission changes undocumented"
+    severity: "med"
+    remediation: "Mandate documentation for all tool grant changes with approver, date, and rationale"
+    owner_role: "Compliance Lead"
+    regulation_refs:
+      - "eu-ai-act:art-12"
+
+facilitator_notes: |
+  This scenario tests whether teams can see the forest (cumulative risk) while
+  standing in the trees (individual tool approvals). The key insight is that
+  each grant was reasonable in isolation; the risk emerges from the chain. Push
+  each role to defend their perspective while identifying the objective
+  escalation point.
+
+debrief_talking_points:
+  - "At what week did the permission set cross the critical threshold?"
+  - "Did the team articulate specific capability chains or just abstract risk?"
+  - "What systemic controls could prevent future scope creep?"
+  - "How well did risk get translated into business terms?"
+
+disclaimers:
+  - "This scenario is a simulation. No real systems or data are impacted."
+  - "All company names and technical details are fictional."
+  - "Regulation citations are illustrative only - see legal disclaimer."
