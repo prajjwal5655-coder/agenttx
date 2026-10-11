@@ -1,0 +1,170 @@
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import Timer from "@/components/Timer";
+import InjectCard from "@/components/InjectCard";
+import DecisionLog from "@/components/DecisionLog";
+import ScoreSheet from "@/components/ScoreSheet";
+import RoleCard from "@/components/RoleCard";
+import { Scenario } from "@/types";
+
+interface SessionPageProps {
+  params: { id: string };
+}
+
+interface SessionData {
+  id: string;
+  facilitator: string;
+  scenarioId: string;
+  scenarioVersion: string;
+  status: string;
+  scenario?: Scenario;
+}
+
+async function getSession(id: string): Promise<SessionData | null> {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/sessions/${id}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.session;
+  } catch {
+    return null;
+  }
+}
+
+export default async function SessionPage({ params }: SessionPageProps) {
+  const { id } = params;
+  const session = await getSession(id);
+
+  if (!session) {
+    return notFound();
+  }
+
+  return <SessionConsoleClient session={session} />;
+}
+
+function SessionConsoleClient({ session }: { session: SessionData }) {
+  const [time, setTime] = useState(0);
+  const [activeInjects, setActiveInjects] = useState<string[]>([]);
+  const [decisions, setDecisions] = useState<Record<string, { option: string; criteria: Record<string, boolean> }>>({});
+  const [scores, setScores] = useState<Record<string, number>>({});
+  const [activeTab, setActiveTab] = useState<"console" | "roles" | "scores">("console");
+
+  const scenario = session.scenario;
+  const injects = scenario?.injects || [];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTime((t) => t + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const elapsedMinutes = Math.floor(time / 60);
+  const startTime = new Date(Date.now() - time * 1000);
+
+  function revealInject(injectId: string) {
+    setActiveInjects((prev) => [...new Set([...prev, injectId])]);
+  }
+
+  function handleDecision(checkpointId: string, option: string, criteriaConfirmed: Record<string, boolean>) {
+    setDecisions((prev) => ({ ...prev, [checkpointId]: { option, criteria: criteriaConfirmed } }));
+  }
+
+  function handleScore(dimensionKey: string, value: number) {
+    setScores((prev) => ({ ...prev, [dimensionKey]: value }));
+  }
+
+  if (!scenario) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-6xl mx-auto px-4">
+          <p className="text-gray-600">Session not found or scenario not loaded.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-6xl mx-auto px-4">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">{scenario.title}</h1>
+          <Timer startTime={startTime} durationMinutes={scenario.duration_minutes} />
+        </div>
+
+        <div className="flex gap-2 mb-6 border-b">
+          <button
+            onClick={() => setActiveTab("console")}
+            className={`px-4 py-2 ${activeTab === "console" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"}`}
+          >
+            Console
+          </button>
+          <button
+            onClick={() => setActiveTab("roles")}
+            className={`px-4 py-2 ${activeTab === "roles" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"}`}
+          >
+            Role Cards
+          </button>
+          <button
+            onClick={() => setActiveTab("scores")}
+            className={`px-4 py-2 ${activeTab === "scores" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"}`}
+          >
+            Score Sheet
+          </button>
+          <Link
+            href={`/sessions/${session.id}/report`}
+            className="px-4 py-2 text-gray-600 hover:text-blue-600"
+          >
+            Report
+          </Link>
+        </div>
+
+        {activeTab === "console" && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-4">
+              {injects
+                .filter((inject) => inject.at_minute <= elapsedMinutes)
+                .map((inject) => (
+                  <InjectCard
+                    key={inject.id}
+                    inject={inject}
+                    isActive={!activeInjects.includes(inject.id)}
+                    onReveal={() => revealInject(inject.id)}
+                  />
+                ))}
+            </div>
+            <div>
+              <DecisionLog
+                checkpoints={scenario.decision_checkpoints}
+                decisions={Object.entries(decisions).map(([cpId, d]) => ({
+                  checkpointId: cpId,
+                  selectedOption: d.option,
+                  elapsedSeconds: time,
+                  criteriaConfirmed: d.criteria,
+                }))}
+                onDecision={handleDecision}
+              />
+            </div>
+          </div>
+        )}
+
+        {activeTab === "roles" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {scenario.roles.map((role) => (
+              <RoleCard key={role.id} role={role} />
+            ))}
+          </div>
+        )}
+
+        {activeTab === "scores" && (
+          <ScoreSheet
+            dimensions={scenario.scoring_dimensions}
+            scores={scores}
+            onScore={(key, value) => handleScore(key, value)}
+          />
+        )}
+      </div>
+    </div>
+  );
+}

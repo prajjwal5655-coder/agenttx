@@ -74,3 +74,73 @@ export type InferCapabilityResult = {
 };
 
 export type Channel = "email" | "slack" | "dashboard" | "phone" | "alert";
+
+export type Scenario = {
+  id: string;
+  title: string;
+  version: string;
+  duration_minutes: number;
+  target_audience: string;
+  difficulty: "beginner" | "intermediate" | "advanced";
+  learning_objectives: string[];
+  based_on: {
+    incident_class: string;
+    public_sources: Array<{
+      title: string;
+      publisher: string;
+      year: number;
+      url?: string | null;
+      verified: boolean;
+    }>;
+    adaptation_note: string;
+  };
+  example_inventory: unknown[];
+  roles: Array<{
+    id: string;
+    name: string;
+    remit: string;
+    private_brief: string;
+    pressure: string;
+    win_conditions: string[];
+  }>;
+  injects: Array<{
+    id: string;
+    at_minute: number;
+    channel: Channel;
+    title: string;
+    body: string;
+    artifacts: string[];
+  }>;
+  decision_checkpoints: Array<{
+    id: string;
+    prompt: string;
+    options: string[];
+    objective_criteria: Array<{
+      key: string;
+      label: string;
+      dimension_key: string;
+      target_minutes?: number;
+      satisfied_if: string;
+      auto: boolean;
+      weight: number;
+    }>;
+  }>;
+  scoring_dimensions: Array<{
+    key: string;
+    label: string;
+    weight: number;
+    description: string;
+    what_good_looks_like: string;
+    common_failure_modes: string[];
+  }>;
+  recommendations: Array<{
+    gap: string;
+    severity: "low" | "med" | "high" | "critical";
+    remediation: string;
+    owner_role: string;
+    regulation_refs: string[];
+  }>;
+  facilitator_notes: string;
+  debrief_talking_points: string[];
+  disclaimers: string[];
+};
